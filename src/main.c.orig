@@ -1,0 +1,293 @@
+/************************************°æÈ¨ÉêÃ÷********************************************
+**                             ¹ãÖÝ´ó²Ê¹âµç¿Æ¼¼ÓÐÏÞ¹«Ë¾
+**                             http://www.gz-dc.com
+**-----------------------------------ÎÄ¼þÐÅÏ¢--------------------------------------------
+** ÎÄ¼þÃû³Æ:   main.c
+** ´´½¨Ê±¼ä:   2012-06-1
+** ÎÄ¼þËµÃ÷:   Ö÷³ÌÐòÄ£¿é°üº¬³ÌÐòµÄ»ù±¾´¦ÀíÁ÷³Ì£¬¸ù¾ÝÐèÒªÌí¼ÓÏûÏ¢µÄÏìÓ¦´¦Àí¡£
+** ¼¼ÊõÖ§³Ö£º  Tel: 020-22077476  Email: hmi@gz-dc.com
+
+ÐÞ¸Ä¼ÇÂ¼
+ÈÕÆÚ: 2012-10-08
+1) Ö¸Áî¶ÓÁÐqueue_find_cmdÌí¼ÓÖ¡Í·ÅÐ¶Ï
+2) ½á¹¹ÌåCTRL_MSGÖ¸¶¨°´×Ö½Ú¶ÔÆë£¬·ñÔò¿ÉÄÜ»á³öÏÖ¶ÔÆëÎÊÌâ
+3) Ìí¼Óuint32»ù±¾ÀàÐÍ¶¨Òå£¬²¢ÐÞ¸ÄÏà¹ØÖ¸Áî½âÎö
+
+/**------------------------------------------------------------------------------------*/
+
+#include "hmi_driver.h"
+#include "hmi_user_uart.h"
+#include "cmd_process.h"
+#include "stdio.h"
+
+#define CMD_MAX_BUFFER 20
+uint8 cmd_buffer[CMD_MAX_BUFFER];
+#define BUSY (GPIO_ReadInputDataBit(GPIOB,GPIO_Pin_8)==1)
+void LCD_GPIO_Init(void)
+{
+    GPIO_InitTypeDef GPIO_InitStructure;
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB,ENABLE);
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA,ENABLE);
+	  RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOC,ENABLE);
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_5| GPIO_Pin_6| GPIO_Pin_7|GPIO_Pin_15|GPIO_Pin_8;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_Init(GPIOB, &GPIO_InitStructure);
+
+    GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_7|GPIO_Pin_11|GPIO_Pin_12;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_Init(GPIOA, &GPIO_InitStructure);
+	
+	    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_5;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;
+
+    GPIO_Init(GPIOA, &GPIO_InitStructure);
+
+    GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_7|GPIO_Pin_6;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_Init(GPIOA, &GPIO_InitStructure);
+    
+
+		
+// 		GPIO_InitStructure.GPIO_Pin = GPIO_Pin_1;
+//     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+//     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+//     GPIO_Init(GPIOB, &GPIO_InitStructure);
+// while(1)
+// {
+// 	GPIO_SetBits(GPIOC,GPIO_Pin_8); 	
+// GPIO_ResetBits(GPIOC,GPIO_Pin_8); 	
+// }
+// 	GPIO_SetBits(GPIOB,GPIO_Pin_1); 	
+}
+		void OnRevGetRevsion(PREV_MSG msg);
+/**************************************************************************************************************
+* Ãû    ³Æ£º main
+* ¹¦    ÄÜ£º ³ÌÐòÈë¿Ú
+***************************************************************************************************************/
+	uint16 screen_id;
+	uint16 control_id;
+void main()
+{
+    uchar cmd_type = 0;
+    uchar control_type = 0;
+    qsize  offset = 0;
+    qsize  size = 0;
+    PCTRL_MSG msg = 0;
+   	PREV_MSG  msg1 = 0;
+    uint8_t i=0,j=0;
+    uint16_t num,num1;
+	  uchar rand[3];
+	
+		uchar graph[7] = {0,10,20,30,40,50,0};
+    Set_System();//ÅäÖÃÊ±ÖÓ
+    Interrupts_Config();//ÅäÖÃÖÐ¶
+    LCD_GPIO_Init();
+    GPIO_ResetBits(GPIOA, GPIO_Pin_7) ;
+    delay_ms(20);//ÑÓÊ±
+    UartInit(115200);//´®¿Ú³õÊ¼»
+
+    queue_reset();//Çå¿ÕÖ¸Áî½ÓÊÕ»º³åÇø
+    delay_ms(5000);
+//Ìí¼ÓÇúÏß
+		SetAddGraph(10,1,0,0XF800);
+
+        while(1)
+        {
+					num++;
+					num1++;
+         if(!BUSY && ( (num %10000) == 0) )
+				 {
+      SetAddGraph(10,1,0,0XF800);
+					sprintf(rand,"%d.%d",num1++/10,num1++%10);
+					if(screen_id==0&&control_id==5)
+				  {			
+					SetTextValue(8,i++,rand);
+					if(i == 18) 
+						i = 2;
+
+          }
+			  	else if(screen_id==0&&control_id==6)
+			    {
+					 SetGraph(10,1,0,6,graph);
+						j++;
+						if(j ==50)
+						{
+						SetDelGraph(10,1,0);	
+					  j=0;
+							}
+							delay_ms(1000);				
+				  }
+				}
+					size = queue_find_cmd(cmd_buffer,CMD_MAX_BUFFER); //´Ó»º³åÇøÖÐ»ñÈ¡Ò»ÌõÖ¸Áî
+            if(size<=0)//Ã»ÓÐ½ÓÊÕµ½Ö¸Áî
+                continue;
+
+            msg = (PCTRL_MSG)cmd_buffer;
+					  msg1 = (PREV_MSG)cmd_buffer;
+            cmd_type = msg->cmd_type;//Ö¸ÁîÀàÐÍ
+            switch(cmd_type)
+            {
+						case CMD_GET_REV:
+							   OnRevGetRevsion(msg1); break;
+            case CMD_TOUCH_PRESS_RETURN://°´ÏÂ´¥ÃþÆÁ
+            case CMD_TOUCH_RELEASE_RETURN://ËÉ¿ª´¥ÃþÆÁ
+                OnRecvTouchXY(cmd_buffer[1],PTR2U16(cmd_buffer+2),PTR2U16(cmd_buffer+4));
+                break;
+
+            case CMD_TYPE_CHANGE_SCREEN://ÇÐ»»»­Ãæ
+                OnRecvChangeScreen(PTR2U16(&msg->screen_id));
+                break;
+
+            case CMD_TYPE_UPDATE_CONTROL://¿Ø¼þ¸üÐÂÏûÏ¢
+                control_type = msg->control_type;//¿Ø¼þÀàÐÍ
+                switch(control_type)
+                {
+                case kCtrlButton:
+                    OnRecvButton(msg,size);
+                    break; //°´Å¥¿Ø¼þ´¦Àí
+                case kCtrlText:
+                    OnRecvText(msg,size);
+                    break; //ÎÄ±¾¿Ø¼þ´¦Àí
+                case kCtrlProgress:
+                    OnRecvProgress(msg,size);
+                    break; //½ø¶ÈÌõ¿Ø¼þ´¦Àí
+                case kCtrlSlider:
+                    OnRecvSlider(msg,size);
+                    break; //»¬¶¯Ìõ¿Ø¼þ´¦Àí
+                case kCtrlMeter:
+                    OnRecvMeter(msg,size);
+                    break; //ÒÇ±í¿Ø¼þ´¦Àí
+                default:
+                    break;
+                }
+                break;
+            }
+						
+					
+    
+        }
+    }
+
+		void OnRevGetRevsion(PREV_MSG msg)
+		{
+			uint8 rev[20];
+		    uint8 ver1 = msg->rev1;//»­ÃæID 2
+        uint8 ver2 = msg->rev2;//»­ÃæID 2
+			  uint8 soft_high = msg-> soft_high;
+			  uint8 soft_low = msg -> soft_low;
+			  uint8 fpga_high = msg -> fpga_high;
+			  uint8 fpga_low = msg -> fpga_low;
+			  uint16 soft = (soft_high <<8) | soft_low;
+			  uint16 fpga = (fpga_high <<8) | fpga_low;
+		  	sprintf(rev,"%d.%d%d.%d%d%d.%d%d%d",ver1,ver2>>4 ,ver2&0x0f,soft /100,(soft-soft/100*100)/10,soft%10,fpga/100,(fpga-fpga/100*100)/10,fpga%10) ;
+// 			DisData(260,0,0 ,3,(ver1)+0x30);
+			DisText(250,0,0 ,6, rev);
+			
+    }
+    /**************************************************************************************************************
+    * Ãû    ³Æ£º OnRecvChangeScreen
+    * ¹¦    ÄÜ£º »­ÃæÇÐ»»ÏûÏ¢ÏìÓ¦º¯Êý
+    * Èë¿Ú²ÎÊý£º screen_id-ÇÐ»»ºóµÄ»­ÃæID
+    ***************************************************************************************************************/
+    void OnRecvChangeScreen(uint16 screen_id)
+    {
+        //TODO: ÓÃ»§´úÂë
+    }
+
+    /**************************************************************************************************************
+    * Ãû    ³Æ£º OnRecvTouchXY
+    * ¹¦    ÄÜ£º ´¥Ãþ×ø±ê½ÓÊÕÏìÓ¦
+    * Èë¿Ú²ÎÊý£º press-1°´ÏÂ´¥ÃþÆÁ£¬3ËÉ¿ª´¥ÃþÆÁ
+    * Èë¿Ú²ÎÊý£º x-´¥ÃþX×ø±ê
+    * Èë¿Ú²ÎÊý£º y-´¥Ãþy×ø±ê
+    ***************************************************************************************************************/
+    void OnRecvTouchXY(uint8 press,uint16 x,uint16 y)
+    {
+        //TODO: ÓÃ»§´úÂë
+    }
+
+    /**************************************************************************************************************
+    * Ãû    ³Æ£º OnRecvButton
+    * ¹¦    ÄÜ£º °´Å¥ÏûÏ¢ÏìÓ¦º¯Êý
+    * Èë¿Ú²ÎÊý£º msg-Ö¸Áî»º³åÇø£¬size-Ö¸Áî´óÐ¡
+    ***************************************************************************************************************/
+    void OnRecvButton(PCTRL_MSG msg,qsize size)
+    {
+    
+        uint8  button_type = msg->param[0];//0»­ÃæÇÐ»»£¬1°´Å¥£¬2ÐéÄâ°´¼ü
+        uint8  value = msg->param[1];//°´Å¥ÊýÖµ
+        uchar  powerdata[3];
+
+        //TODO: ÓÃ»§´úÂë
+        uint8 i=0,j=0;
+				     screen_id = PTR2U16(&msg->screen_id);//»­ÃæID
+         control_id = PTR2U16(&msg->control_id);//¿Ø¼þID
+        if(screen_id==0&&control_id==12)
+        {
+             Get_Revision();
+        }
+				
+				else if(screen_id==0&&control_id==7)
+				{
+				TestTouchScreen();
+        }
+    }
+
+    /**************************************************************************************************************
+    * Ãû    ³Æ£º OnRecvText
+    * ¹¦    ÄÜ£º ÎÄ±¾¿Ø¼þÏûÏ¢ÏìÓ¦º¯Êý
+    * Èë¿Ú²ÎÊý£º msg-Ö¸Áî»º³åÇø£¬size-Ö¸Áî´óÐ¡
+    ***************************************************************************************************************/
+    void OnRecvText(PCTRL_MSG msg,qsize size)
+    {
+         screen_id = PTR2U16(&msg->screen_id);//»­ÃæID
+         control_id = PTR2U16(&msg->control_id);//¿Ø¼þID
+
+        //TODO: ÓÃ»§´úÂë
+    }
+
+    /**************************************************************************************************************
+    * Ãû    ³Æ£º OnRecvProgress
+    * ¹¦    ÄÜ£º ½ø¶ÈÌõÏûÏ¢ÏìÓ¦º¯Êý
+    * Èë¿Ú²ÎÊý£º msg-Ö¸Áî»º³åÇø£¬size-Ö¸Áî´óÐ¡
+    ***************************************************************************************************************/
+    void OnRecvProgress(PCTRL_MSG msg,qsize size)
+    {
+        
+        uint32 value = PTR2U32(msg->param);//ÊýÖµ
+ screen_id = PTR2U16(&msg->screen_id);//»­ÃæID
+         control_id = PTR2U16(&msg->control_id);//¿Ø¼þID
+        //TODO: ÓÃ»§´úÂë
+    }
+
+    /**************************************************************************************************************
+    * Ãû    ³Æ£º OnRecvSlider
+    * ¹¦    ÄÜ£º »¬¶¯ÌõÏûÏ¢ÏìÓ¦º¯Êý
+    * Èë¿Ú²ÎÊý£º msg-Ö¸Áî»º³åÇø£¬size-Ö¸Áî´óÐ¡
+    ***************************************************************************************************************/
+    void OnRecvSlider(PCTRL_MSG msg,qsize size)
+    {
+       
+        uint32 value = PTR2U32(msg->param);//ÊýÖµ
+  screen_id = PTR2U16(&msg->screen_id);//»­ÃæID
+         control_id = PTR2U16(&msg->control_id);//¿Ø¼þID
+        //TODO: ÓÃ»§´úÂë
+        SetBackLight(value%255);//µ÷½Ú±³¹â
+    }
+
+    /**************************************************************************************************************
+    * Ãû    ³Æ£º OnRecvMeter
+    * ¹¦    ÄÜ£º ÒÇ±íÏûÏ¢ÏìÓ¦º¯Êý
+    * Èë¿Ú²ÎÊý£º msg-Ö¸Áî»º³åÇø£¬size-Ö¸Áî´óÐ¡
+    ***************************************************************************************************************/
+    void OnRecvMeter(PCTRL_MSG msg,qsize size)
+    {
+        uint16 screen_id = PTR2U16(&msg->screen_id);//»­ÃæID
+        uint16 control_id = PTR2U16(&msg->control_id);//¿Ø¼þID
+        uint32 value = PTR2U32(msg->param);//ÊýÖµ
+
+        //TODO: ÓÃ»§´úÂë
+    }

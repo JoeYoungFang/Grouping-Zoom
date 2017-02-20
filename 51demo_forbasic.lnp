@@ -1,0 +1,9 @@
+"cmd_queue.obj",
+"hmi_driver.obj",
+"hmi_user_uart.obj",
+"STARTUP.obj",
+"main.obj",
+"ulitity.obj" 
+TO "51demo_forbasic" 
+
+REMOVEUNUSED 
